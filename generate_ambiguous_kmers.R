@@ -1,42 +1,44 @@
 ##### this script finds imperfectly-mapped genes and saves the imperfect kmers in file for each gene.
 
+.libPaths("~/rLibrary")
+
 suppressMessages(library(argparser))
 suppressMessages(library(data.table))
 suppressMessages(library(intervals))
 suppressMessages(library(seqinr))
 
 args <- arg_parser('program')
-args <- add_argument(args, '-mappability',
+args <- add_argument(args, '--mappability',
                      help='mappability file',
                      default = '/work-zfs/abattle4/ashis/progres/crossmap/test_hg19/gene_mappability/gene_mappability.txt')
-args <- add_argument(args, '-genome', 
+args <- add_argument(args, '--genome', 
                      help='genome sequence directory',
                      default='/work-zfs/abattle4/lab_data/hg19')
-args <- add_argument(args, '-annot', 
+args <- add_argument(args, '--annot', 
                      help='exon and UTR annotation file (txt)',
                      default='/work-zfs/abattle4/ashis/progres/crossmap/test_hg19/annot/annot.exon_utr.txt')
-args <- add_argument(args, '-k_exon', 
+args <- add_argument(args, '--k_exon', 
                      help='k-mer length for exon',
                      default=75)
-args <- add_argument(args, '-k_utr', 
+args <- add_argument(args, '--k_utr', 
                      help='k-mer length for utr',
                      default=36)
-args <- add_argument(args, '-kmap_exon', 
+args <- add_argument(args, '--kmap_exon', 
                      help='bedgraph file containing k-mer mappabilities where k=k_exon',
                      default='/work-zfs/abattle4/lab_data/annotation/kmer_alignability_hg19/wgEncodeCrgMapabilityAlign75mer.bed')
-args <- add_argument(args, '-kmap_utr', 
+args <- add_argument(args, '--kmap_utr', 
                      help='bedgraph file containing k-mer mappabilities where k=k_utr',
                      default='/work-zfs/abattle4/lab_data/annotation/kmer_alignability_hg19/wgEncodeCrgMapabilityAlign36mer.bed')
-args <- add_argument(args, '-th1',
+args <- add_argument(args, '--th1',
                      help='starting appability threshold. genes w/ avg mappability >= th1 are included.',
                      default=0)
-args <- add_argument(args, '-th2',
+args <- add_argument(args, '--th2',
                      help='ending appability threshold. genes w/ avg mappability < th2 are included.',
                      default=1.0)
-args <- add_argument(args, '-dir_name_len',
+args <- add_argument(args, '--dir_name_len',
                      help='length of the sub-directory names. First dir_name_len letters from gene form the subdirectory name.',
                      default=12)
-args <- add_argument(args, '-verbose', 
+args <- add_argument(args, '--verbose', 
                      help='show computation status if verbose > 0',
                      default=1)
 args <- add_argument(args, '-o',
@@ -81,7 +83,7 @@ verbose_print('reading input files ...')
 mappability <- fread(input = mappability_fn, sep = '\t', header = F, stringsAsFactors = F, colClasses = c('character', 'numeric'), col.names = c('gene', 'mappability'), data.table = F)
 
 annot_df = fread(input = annot_fn, sep='\t', header=T, stringsAsFactors = F, data.table = F, showProgress = verbose>0)
-utr_data_formatted <- annot_df[annot_df$feature == 'UTR', ]
+utr_data_formatted <- annot_df[grepl('utr',annot_df$feature), ]
 exon_data_formatted <- annot_df[annot_df$feature == 'exon', ]
 
 bed75 = fread(input = bed75_fn, sep='\t', header=F, stringsAsFactors = F, data.table = F, colClasses = c('character', 'numeric', 'numeric', 'numeric'), showProgress = verbose>0 )
@@ -105,12 +107,12 @@ utr_data_formatted <- utr_data_formatted[utr_data_formatted$gene_id %in% target_
 
 #### sanity check: does any gene come from multiple chromosomes?
 n_chr_per_exon_gene <- tapply(exon_data_formatted$chr, INDEX = exon_data_formatted$gene_id, FUN = function(x) length(unique(x)))
-if (any(n_chr_per_exon_gene > 1))
-  stop('some gene(s) comes from multiple chromosomes. following exon-interval merging will not work for it!')
+if (any(n_chr_per_exon_gene > 1)){
+  stop('some gene(s) comes from multiple chromosomes. following exon-interval merging will not work for it!')}
 
 n_chr_per_utr_gene <- tapply(utr_data_formatted$chr, INDEX = utr_data_formatted$gene_id, FUN = function(x) length(unique(x)))
-if (any(n_chr_per_utr_gene > 1))
-  stop('some gene(s) comes from multiple chromosomes. following utr-interval merging will not work for it!')
+if (any(n_chr_per_utr_gene > 1)){
+  stop('some gene(s) comes from multiple chromosomes. following utr-interval merging will not work for it!')}
 
 ### function to get subdirectory for a gene
 get_subdir <- function(gid, out_dir, dir_name_len){
@@ -127,10 +129,10 @@ get_kmer_file_names <- function(gid, out_dir, dir_name_len){
 }
 
 ##### save target genes' kmers
-save_kmers_of_genes_by_chr <- function(cur_chr, flag='UTR', append=F){
+save_kmers_of_genes_by_chr <- function(cur_chr, flag='utr', append=F){
   verbose_print('subsetting chromosome data ...')
 
-  if(flag=='UTR'){
+  if(flag=='utr'){
     chr_annot_data <- utr_data_formatted[utr_data_formatted$chr == cur_chr, ]
     if (nrow(chr_annot_data) <= 0){
       verbose_print(paste0('no imperfect gene in ', cur_chr))
@@ -191,8 +193,8 @@ save_kmers_of_genes_by_chr <- function(cur_chr, flag='UTR', append=F){
     imperfect_kmers_count = table(imperfect_kmers)
     if(length(imperfect_kmers_count) > 0){
       out_subdir = get_subdir(gid, out_dir = out_dir, dir_name_len = dir_name_len)
-      if(!dir.exists(out_subdir)) 
-        dir.create(out_subdir)
+      if(!dir.exists(out_subdir)){ 
+        dir.create(out_subdir)}
       out_files <- get_kmer_file_names(gid, out_dir = out_dir, dir_name_len = dir_name_len)
       write(names(imperfect_kmers_count), out_files$text_fn, sep="\n", append=append)
       write(as.numeric(imperfect_kmers_count), out_files$count_fn, sep="\n", append=append)
@@ -211,7 +213,7 @@ chromosomes <- unique(utr_data_formatted$chr)
 all_n_imperfect_kmers <- lapply(chromosomes, function(cur_chr){
   # cur_chr = 'chr22' # to debug
   verbose_print( paste('########## saving UTR kmers of', cur_chr, '##########'))
-  n_imperfect_kmers_utr <- save_kmers_of_genes_by_chr(cur_chr, 'UTR', append=F)
+  n_imperfect_kmers_utr <- save_kmers_of_genes_by_chr(cur_chr, 'utr', append=F)
   verbose_print( paste('########## saving exon kmers of', cur_chr, '##########'))
   n_imperfect_kmers_exon <- save_kmers_of_genes_by_chr(cur_chr, 'exon', append=T)
   n_imperfect_kmers <- c(n_imperfect_kmers_exon, n_imperfect_kmers_utr)
