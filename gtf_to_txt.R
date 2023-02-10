@@ -1,15 +1,17 @@
 # this script converts gene and transcript gtf file to tab-delimitted txt file.
+.libPaths("~/rLibrary")
+#install.packages('argparser',repos = "http://cran.us.r-project.org")
 suppressMessages(library(argparser))
 suppressMessages(library(data.table))
 suppressMessages(library(stringr))
 
 args <- arg_parser('program')
-args <- add_argument(args, '-gtf', 
+args <- add_argument(args, '--gtf', 
                      help='gtf file',
                      default='/work-zfs/abattle4/lab_data/annotation/gencode.v26/gencode.v26.annotation.gtf')
 args <- add_argument(args, '-f',
                      help='feautres to include, separated by comma',
-                     default='exon,UTR')
+                     default='exon,utr')
 args <- add_argument(args, '-o',
                      help='output text file',
                      default='results/annot.txt')
