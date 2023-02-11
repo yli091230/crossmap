@@ -1,4 +1,4 @@
-# Cross-mappability
+# Cross-mappability_Modified for Rat genome
 
 Cross-mappability from gene A to gene B, crossmap(A,B), is defined as the number of gene A's k-mers (75-mers from exons and 36-mers from UTRs) whose alignment start within exonic or untranslated regions of gene B. Cross-mappability has been described in the following paper.
 
