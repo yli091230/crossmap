@@ -1,46 +1,47 @@
 ### this script computes cross-mappabilities genome-wide
+.libPaths("~/rLibrary")
 suppressMessages(library(argparser))
 suppressMessages(library(data.table))
 suppressMessages(library(intervals))
 
 args <- arg_parser('program')
-args <- add_argument(args, '-annot', 
+args <- add_argument(args, '--annot', 
                      help='exon and UTR annotation file (txt)',
                      default='/work-zfs/abattle4/ashis/progres/crossmap/test_hg19/annot/annot.exon_utr.txt')
-args <- add_argument(args, '-mappability',
+args <- add_argument(args, '--mappability',
                      help='mappability file',
                      default = '/work-zfs/abattle4/ashis/progres/crossmap/test_hg19/gene_mappability/gene_mappability.txt')
-args <- add_argument(args, '-kmer', 
+args <- add_argument(args, '--kmer', 
                      help='ambiguous kmer directory',
                      default='/work-zfs/abattle4/ashis/progres/crossmap/test_hg19/ambiguous_kmers')
-args <- add_argument(args, '-align', 
+args <- add_argument(args, '--align', 
                      help='kmer alignment directory',
                      default='/work-zfs/abattle4/ashis/progres/crossmap/test_hg19/ambiguous_kmers_alignment')
-args <- add_argument(args, '-index', 
+args <- add_argument(args, '--index', 
                      help='bowtie index prefix',
                      default='/work-zfs/abattle4/lab_data/hg19/prebuilt_bowtie_index/hg19')
-args <- add_argument(args, '-n1',
+args <- add_argument(args, '--n1',
                      help='compute cross-mappability from n1-th to n2-th gene in the mappabiity file. negative number to use all genes.',
                      default=-1)
-args <- add_argument(args, '-n2',
+args <- add_argument(args, '--n2',
                      help='compute cross-mappability from n1-th to n2-th gene in the mappabiity file.  negative number to use all genes.',
                      default=-1)
-args <- add_argument(args, '-mismatch',
+args <- add_argument(args, '--mismatch',
                      help='maximum number of mismatch for alignment',
                      default=2)
-args <- add_argument(args, '-max_chr', 
+args <- add_argument(args, '--max_chr', 
                      help='maximum number of chromosomes to load in memory',
                      default=7)
-args <- add_argument(args, '-max_gene', 
+args <- add_argument(args, '--max_gene', 
                      help='maximum number of genes to align before cleaning alignments',
                      default=100)
-args <- add_argument(args, '-initonly', 
+args <- add_argument(args, '--initonly', 
                      help='initialize required resources only, without computing cross-mappability',
                      default=FALSE)
-args <- add_argument(args, '-dir_name_len',
+args <- add_argument(args, '--dir_name_len',
                      help='length of the sub-directory names in ambiguous kmer directory.',
                      default=12)
-args <- add_argument(args, '-verbose', 
+args <- add_argument(args, '--verbose', 
                      help='show computation status if verbose > 0',
                      default=1)
 args <- add_argument(args, '-o',
@@ -113,8 +114,8 @@ annot_df = fread(input = annot_fn, sep='\t', header=T, stringsAsFactors = F, dat
 annotation_formatted <- annot_df[annot_df$feature == 'UTR' | annot_df$feature == 'exon', ]
 
 ##### filter genes: n1-th to n2-th gene in the mappability data
-if(n1>nrow(mappability))
-  stop(sprintf('n1 (=%d) is greater than the number of genes (=%d) in the mappability file: %s', n1, nrow(mappability), mappability_fn))
+if(n1>nrow(mappability)){
+  stop(sprintf('n1 (=%d) is greater than the number of genes (=%d) in the mappability file: %s', n1, nrow(mappability), mappability_fn))}
 
 if(n1>=1 && n2>=1){
   target_mappability <- mappability[n1:min(n2, nrow(mappability)), , drop = F]
@@ -176,8 +177,8 @@ load_chromosomes <- function(chromosomes){
   tmp <- lapply(chromosomes, function(cur_chr){
     gc()
     chr_pos2genes_data_dir = paste0(out_dir,'/pos2gene')
-    if(!dir.exists(chr_pos2genes_data_dir)) 
-      dir.create(chr_pos2genes_data_dir)
+    if(!dir.exists(chr_pos2genes_data_dir)){ 
+      dir.create(chr_pos2genes_data_dir)}
     chr_pos2genes_data_fn = paste0(chr_pos2genes_data_dir,'/pos2gene_',cur_chr,'.RData')
     create_and_save_pos2gene_mapping = T
     if(file.exists(chr_pos2genes_data_fn)){
@@ -207,8 +208,8 @@ find_and_save_cross_mappability <- function(g, chromosomes, delete_alignment=F, 
   align_fn <- paste0(alignment_subdir, '/', g, '.alignment.txt')
   kmer_fn <- paste0(kmer_subdir, '/', g, '.kmer.fa')
   if(!file.exists(align_fn)){
-    if(!dir.exists(alignment_subdir))
-      dir.create(alignment_subdir)
+    if(!dir.exists(alignment_subdir)){
+      dir.create(alignment_subdir)}
     align_cmd <- paste0('bowtie -v ', max_mismatch,' -B 1 --quiet -a ', bowtie_index_prefix,  ' -f ', kmer_fn, '  | cut -f 1,3-4  > ', align_fn)
     system(align_cmd)
   }
@@ -243,8 +244,8 @@ find_and_save_cross_mappability <- function(g, chromosomes, delete_alignment=F, 
     
     gene_idx_list <- pos2genes_by_chr[[chr]][pos]
     gene_idx_expanded <- unlist(gene_idx_list)
-    if(length(gene_idx_expanded) == 0)
-      return(empty_return_list)
+    if(length(gene_idx_expanded) == 0){
+      return(empty_return_list)}
     
     kmer_expanded <- unlist(mapply(rep, kmer, sapply(gene_idx_list, length), SIMPLIFY=F))
     
@@ -265,12 +266,12 @@ find_and_save_cross_mappability <- function(g, chromosomes, delete_alignment=F, 
   out_subdir = get_subdir(gid = g, out_dir = out_dir, dir_name_len = dir_name_len)
   out_fn <- paste0(out_subdir, '/', g, '.crossmap.txt')
   
-  if(append_conflict==FALSE && file.exists(out_fn))
-    file.remove(out_fn)
+  if(append_conflict==FALSE && file.exists(out_fn)){
+    file.remove(out_fn)}
   
   if(nrow(conflicting_genes) > 0 ){
-    if(!dir.exists(out_subdir))
-      dir.create(out_subdir)
+    if(!dir.exists(out_subdir)){
+      dir.create(out_subdir)}
     write.table(conflicting_genes[,c('G1','G2', 'S1')], file = out_fn, sep = '\t', quote = F, row.names = F, col.names = F, append = append_conflict)
   }
   
