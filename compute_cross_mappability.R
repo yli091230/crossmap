@@ -213,73 +213,77 @@ find_and_save_cross_mappability <- function(g, chromosomes, delete_alignment=F, 
     align_cmd <- paste0('bowtie -v ', max_mismatch,' -B 1 --quiet -a ', bowtie_index_prefix,  ' -f ', kmer_fn, '  | cut -f 1,3-4  > ', align_fn)
     system(align_cmd)
   }
-  
-  align_dt <- tryCatch(fread(input = align_fn, sep = '\t', header = F, stringsAsFactors = T, colClasses = c('integer', 'character', 'integer'), col.names = c('kmer', 'chr', 'pos'), data.table = T),
-                        error=function(e){
-                                stop(sprintf('problem in reading a bowtie alignment file: %s.\nplease delete the alignment file and check bowtie settings.', align_fn))
-                                return()
-                              })
-  align_dt$kmer= align_dt$kmer+1  # convert to 1-based k-mer index
-    
-  # read k-mer occurences from file
-  kmer_counts_fn = paste0(kmer_subdir, '/', g, '.count.txt')
-  kmer_counts_df = fread(input=kmer_counts_fn, header = F, sep='\t', stringsAsFactors = F, colClasses = 'numeric', data.table = F)
-  gene_kmer_occurences =  kmer_counts_df[,1]
-  
-  if(delete_alignment == T){
-    file.remove(align_fn)
-  }
-  
-  ### get conflicting genes
-  get_chr_conflicts <- function(kmer, pos, chr){
-    chr = as.character(chr)
-    empty_return_list = list(G1=character(), G2=character(), S1=double())
-    if(!(chr %in% chromosomes)){
-      return(empty_return_list)
-    }
-    
-    valid_pos_idx = pos <= length(pos2genes_by_chr[[chr]])
-    pos <- pos[valid_pos_idx]
-    kmer <- kmer[valid_pos_idx]
-    
-    gene_idx_list <- pos2genes_by_chr[[chr]][pos]
-    gene_idx_expanded <- unlist(gene_idx_list)
-    if(length(gene_idx_expanded) == 0){
-      return(empty_return_list)}
-    
-    kmer_expanded <- unlist(mapply(rep, kmer, sapply(gene_idx_list, length), SIMPLIFY=F))
-    
-    conflict_df = data.frame(gene_idx=gene_idx_expanded, kmer=kmer_expanded)
-    unique_conflict_df = unique(conflict_df)
-    # S1 is the total number of k-mers in gene1 that map to gene2 (duplicate counts multiple times)
-    S1_counts = tapply(gene_kmer_occurences[unique_conflict_df$kmer], unique_conflict_df$gene_idx, sum)
-    S1 = data.frame(gene_idx=as.numeric(names(S1_counts)), S1 = as.numeric(S1_counts), stringsAsFactors = F)
-    S1 = S1[S1$gene_idx != imperfect_genes_2_idx[[g]], ] # exclude self-crossmapping
-    rm(valid_pos_idx, pos, kmer, gene_idx_list, gene_idx_expanded, kmer_expanded, conflict_df, unique_conflict_df, S1_counts, empty_return_list)
-    gc(reset = T)
-    return(list(G1=rep(g, nrow(S1)), G2 = imperfect_genes[S1$gene_idx], S1=S1$S1))
-  }
-  
-  conflicting_genes <- align_dt[,get_chr_conflicts(kmer, pos, chr), by=chr]
-  
-  ### save conflicting gene pairs
-  out_subdir = get_subdir(gid = g, out_dir = out_dir, dir_name_len = dir_name_len)
-  out_fn <- paste0(out_subdir, '/', g, '.crossmap.txt')
-  
-  if(append_conflict==FALSE && file.exists(out_fn)){
-    file.remove(out_fn)}
-  
-  if(nrow(conflicting_genes) > 0 ){
-    if(!dir.exists(out_subdir)){
-      dir.create(out_subdir)}
-    write.table(conflicting_genes[,c('G1','G2', 'S1')], file = out_fn, sep = '\t', quote = F, row.names = F, col.names = F, append = append_conflict)
-  }
-  
-  # clean memory
-  rm(align_dt, kmer_counts_df, gene_kmer_occurences, conflicting_genes)
-  gc(reset = T)
-  
-  return()
+  #verbose_print(paste('start read alignment file', align_fn)) #for debug
+  if(!(file.size(align_fn) == 0 )){ 
+  	 align_dt <- tryCatch(fread(input = align_fn, sep = '\t', header = F, stringsAsFactors = T, colClasses = c('integer', 'character', 'integer'), col.names = c('kmer', 'chr', 'pos'), data.table = T),
+				error=function(e){
+					stop(sprintf('problem in reading a bowtie alignment file: %s.\nplease delete the alignment file and check bowtie settings.', align_fn))
+					return()
+				      })
+	  align_dt$kmer= align_dt$kmer+1  # convert to 1-based k-mer index
+	    
+	  # read k-mer occurences from file
+	  kmer_counts_fn = paste0(kmer_subdir, '/', g, '.count.txt')
+	  kmer_counts_df = fread(input=kmer_counts_fn, header = F, sep='\t', stringsAsFactors = F, colClasses = 'numeric', data.table = F)
+	  gene_kmer_occurences =  kmer_counts_df[,1]
+	  
+	  if(delete_alignment == T){
+	    file.remove(align_fn)
+	  }
+	  
+	  ### get conflicting genes
+	  get_chr_conflicts <- function(kmer, pos, chr){
+	    chr = as.character(chr)
+	    empty_return_list = list(G1=character(), G2=character(), S1=double())
+	    if(!(chr %in% chromosomes)){
+	      return(empty_return_list)
+	    }
+	    
+	    valid_pos_idx = pos <= length(pos2genes_by_chr[[chr]])
+	    pos <- pos[valid_pos_idx]
+	    kmer <- kmer[valid_pos_idx]
+	    
+	    gene_idx_list <- pos2genes_by_chr[[chr]][pos]
+	    gene_idx_expanded <- unlist(gene_idx_list)
+	    if(length(gene_idx_expanded) == 0){
+	      return(empty_return_list)}
+	    
+	    kmer_expanded <- unlist(mapply(rep, kmer, sapply(gene_idx_list, length), SIMPLIFY=F))
+	    
+	    conflict_df = data.frame(gene_idx=gene_idx_expanded, kmer=kmer_expanded)
+	    unique_conflict_df = unique(conflict_df)
+	    # S1 is the total number of k-mers in gene1 that map to gene2 (duplicate counts multiple times)
+	    S1_counts = tapply(gene_kmer_occurences[unique_conflict_df$kmer], unique_conflict_df$gene_idx, sum)
+	    S1 = data.frame(gene_idx=as.numeric(names(S1_counts)), S1 = as.numeric(S1_counts), stringsAsFactors = F)
+	    S1 = S1[S1$gene_idx != imperfect_genes_2_idx[[g]], ] # exclude self-crossmapping
+	    rm(valid_pos_idx, pos, kmer, gene_idx_list, gene_idx_expanded, kmer_expanded, conflict_df, unique_conflict_df, S1_counts, empty_return_list)
+	    gc(reset = T)
+	    return(list(G1=rep(g, nrow(S1)), G2 = imperfect_genes[S1$gene_idx], S1=S1$S1))
+	  }
+	  
+	  conflicting_genes <- align_dt[,get_chr_conflicts(kmer, pos, chr), by=chr]
+	  
+	  ### save conflicting gene pairs
+	  out_subdir = get_subdir(gid = g, out_dir = out_dir, dir_name_len = dir_name_len)
+	  out_fn <- paste0(out_subdir, '/', g, '.crossmap.txt')
+	  
+	  if(append_conflict==FALSE && file.exists(out_fn)){
+	    file.remove(out_fn)}
+	  
+	  if(nrow(conflicting_genes) > 0 ){
+	    if(!dir.exists(out_subdir)){
+	      dir.create(out_subdir)}
+	    write.table(conflicting_genes[,c('G1','G2', 'S1')], file = out_fn, sep = '\t', quote = F, row.names = F, col.names = F, append = append_conflict)
+	  }
+	  
+	  # clean memory
+	  rm(align_dt, kmer_counts_df, gene_kmer_occurences, conflicting_genes)
+	  gc(reset = T)
+	  
+	  return()
+	} else {
+  	  return()
+  	}
 }
 
 ### initialize resources only, without computing cross-mappability
