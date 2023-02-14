@@ -1,3 +1,5 @@
+#!/bin/bash
+
 get_slurm_header()
 {
   if [ $# -lt 9 ]; then 
@@ -14,10 +16,11 @@ get_slurm_header()
        job_name=$7
        out_fn=$8
        err_fn=$9
+       acct_info=${10}       
        
-       cmd_header="#"'!'"/bin/sh"
+       cmd_header="#"'!'"/bin/bash"
        cmd_header="$cmd_header\n#SBATCH --partition=${partition}"
-       cmd_header="$cmd_header\n#SBATCH --workdir=${workdir}"
+       cmd_header="$cmd_header\n#SBATCH --chdir=${workdir}"
        cmd_header="$cmd_header\n#SBATCH --time=${time}"
        cmd_header="$cmd_header\n#SBATCH --nodes=${nodes}"
        cmd_header="$cmd_header\n#SBATCH --ntasks=${ntasks}"
@@ -25,6 +28,8 @@ get_slurm_header()
        cmd_header="$cmd_header\n#SBATCH --job-name=${job_name}"
        cmd_header="$cmd_header\n#SBATCH --output=${out_fn}"
        cmd_header="$cmd_header\n#SBATCH --error=${err_fn}"
+       cmd_header="$cmd_header\n#SBATCH --account=${acct_info}"
+       cmd_header="$cmd_header\n#SBATCH --export=NONE"
        cmd_header="$cmd_header\n"
        
        echo $cmd_header
@@ -51,21 +56,24 @@ submit_slurm_job()
   if [ $# -ge 4 ]; then ntasks=$4; fi
   if [ $# -ge 5 ]; then time=$5; fi
   if [ $# -ge 6 ]; then mem=$6; fi
-
+  if [ $# -ge 7 ]; then account=$7; fi
   # slurm header
   script_dir="$(dirname "$script_fn")"
   job_name="$(basename "$script_fn")"
   slurm_job_fn="${script_fn}.slurm"
-  cmd_header=$(get_slurm_header ${partition} ${script_dir} ${time} ${nodes} ${ntasks} ${mem} ${job_name} "${slurm_job_fn}.%%j.out" "${slurm_job_fn}.%%j.err")
-
+  cmd_header=$(get_slurm_header ${partition} ${script_dir} ${time} ${nodes} ${ntasks} ${mem} ${job_name} "${slurm_job_fn}.%%j.out" "${slurm_job_fn}.%%j.err" ${account})
+  echo ${cmd_header}
   # slurm modules
-  cmd_modules="module load gcc"
-  cmd_modules="$cmd_modules\nmodule load R"
-  cmd_modules="$cmd_modules\nmodule load bowtie1/1.2.2"
+#  cmd_modules="export PATH=/expanse/protected/gymreklab-dbgap/mount/yal084/Cynthia_project/mappability/tools/bowtie-1.2.2-linux-x86_64:$PATH"
+  cmd_modules="module purge"
+  cmd_modules="${cmd_modules}\nmodule load cpu/0.15.4  gcc/9.2.0 slurm"
+  cmd_modules="$cmd_modules\nmodule load r/4.0.2-openblas"
+  cmd_modules="$cmd_modules\nmodule list"
   cmd_modules="$cmd_modules\n"
   
   # target script
-  cmd_body="sh \"$script_fn\""
+  #cmd_body="export PATH=/expanse/protected/gymreklab-dbgap/mount/yal084/Cynthia_project/mappability/tools/bowtie-1.2.2-linux-x86_64:$PATH"
+  cmd_body="bash \"$script_fn\""
   cmd_body="$cmd_body\necho DONE"
 
   # save slurm job

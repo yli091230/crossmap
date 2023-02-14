@@ -201,6 +201,13 @@ load_chromosomes <- function(chromosomes){
 
 ##### align and compute cross-mappability from each gene
 find_and_save_cross_mappability <- function(g, chromosomes, delete_alignment=F, append_conflict=F){
+  
+#  out_subdir = get_subdir(gid = g, out_dir = out_dir, dir_name_len = dir_name_len)
+#  out_fn <- paste0(out_subdir, '/', g, '.crossmap.txt')
+#  if (file.exists(out_fn) & append_conflict == FALSE ){
+#	  verbose_print(paste('Skipped ', g, ' as its cross-mappability already computed'))
+#	  return()
+#  }else{
   verbose_print(paste('computing cross-mappability from gene ', g, ' to genes in ', paste0(chromosomes, collapse = ',') ))
   ### align kmers of gene g
   kmer_subdir = get_subdir(gid = g, out_dir = kmer_dir, dir_name_len = dir_name_len)
@@ -284,6 +291,7 @@ find_and_save_cross_mappability <- function(g, chromosomes, delete_alignment=F, 
 	} else {
   	  return()
   	}
+#  }
 }
 
 ### initialize resources only, without computing cross-mappability
