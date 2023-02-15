@@ -68,7 +68,7 @@ submit_slurm_job()
   cmd_modules="module purge"
   cmd_modules="${cmd_modules}\nmodule load cpu/0.15.4  gcc/9.2.0 slurm"
   cmd_modules="$cmd_modules\nmodule load r/4.0.2-openblas"
-  cmd_modules="$cmd_modules\nmodule list"
+#  cmd_modules="$cmd_modules\nmodule list"
   cmd_modules="$cmd_modules\n"
   
   # target script
